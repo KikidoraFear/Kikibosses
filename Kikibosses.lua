@@ -65,6 +65,15 @@ local function EOHeal(unitIDs_cache, unitIDs, value, target)
   return eheal, oheal
 end
 
+local function InTable(val, tbl)
+  for index, value in ipairs(tbl) do
+    if value == val then
+        return index
+    end
+  end
+  return nil
+end
+
 
 ----------
 -- Init --
@@ -157,10 +166,12 @@ parser_loatheb:SetScript("OnEvent", function()
           value = 0
         end
 
-        if source == boss_data["Loatheb"]["healers"][idx_healer] then
+        local idx_healer_new = InTable(source, boss_data["Loatheb"]["healers"])
+        if idx_healer_new then -- source == boss_data["Loatheb"]["healers"][idx_healer] then
           local healer_id = GetUnitID(unitIDs_cache, unitIDs, source)
           local _, healer_class = UnitClass(healer_id)
           if loatheb_healing_spells[healer_class] == spell then
+            idx_healer = idx_healer_new -- in case wrong healer healed, continue as if the wrong healer was supposed to heal
             local eheal, oheal = EOHeal(unitIDs_cache, unitIDs, value, target)
             local rw_text = source.." used "..spell.." to heal "..target.." for "..eheal.." (+"..oheal..")"
 
