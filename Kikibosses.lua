@@ -17,7 +17,6 @@ local function GetArLength(arr) -- get array length
 end
 
 local function HasDebuff(unit_id, debuff)
-  print("Checking debuff")
   for i=1,40 do
     local name,_ = UnitDebuff(unit_id, i)
     if not name then
@@ -175,7 +174,13 @@ parser_loatheb:SetScript("OnEvent", function()
               next_healer = boss_data["Loatheb"]["healers"][idx_healer]
               next_healer_id = GetUnitID(unitIDs_cache, unitIDs, next_healer)
               local next_healer_debuff = HasDebuff(next_healer_id, "Interface\\Icons\\Spell_Shadow_CurseOfTounges") -- only works with icon link, idk
+              if next_healer_debuff then
+                print("Skipping "..next_healer.." (has debuff)")
+              end
               local next_healer_dead = UnitIsDeadOrGhost(next_healer_id)
+              if next_healer_dead then
+                print("Skipping "..next_healer.." (is dead)")
+              end
               can_heal = (not next_healer_debuff) and (not next_healer_dead)
               loops = loops + 1
               if loops > boss_data["Loatheb"]["num_healers"] then
@@ -187,7 +192,7 @@ parser_loatheb:SetScript("OnEvent", function()
             else
               local _, next_class = UnitClass(next_healer_id)
               local next_spell = loatheb_healing_spells[next_class]
-              rw_text = rw_text.." -> "..next_healer.." ("..next_spell..")"
+              rw_text = rw_text.." -> "..next_healer.." next ("..next_spell..")"
             end
 
             SendChatMessage(rw_text, "RAID_WARNING")
