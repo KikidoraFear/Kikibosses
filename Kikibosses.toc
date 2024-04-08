@@ -2,6 +2,6 @@
 ## Title: Kikibosses1
 ## Author: Kikidora
 ## Notes: helps with raid bosses and stuff
-## Version: 1.0
+## Version: 1.1
 
 Kikibosses.lua

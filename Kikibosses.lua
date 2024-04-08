@@ -16,6 +16,16 @@ local function GetArLength(arr) -- get array length
   end
 end
 
+local function HasDebuff(unit_id, debuff)
+  for i=1,40 do
+    local debuff_active = UnitDebuff(unit_id, i)
+    if debuff_active == debuff then
+      return true
+    end
+  end
+  return false
+end
+
 local function ParseHealers(args, healers) -- SR data
   args = args.."#" -- add # so last argument will be matched as well
   local pattern = "(%w+)#"
@@ -43,8 +53,6 @@ end
 
 local function EOHeal(unitIDs_cache, unitIDs, value, target)
   local unitID = GetUnitID(unitIDs_cache, unitIDs, target)
-  print(target)
-  print(unitID)
   local eheal = 0
   local oheal = 0
   if unitID then
@@ -65,8 +73,6 @@ local boss_data = {
     num_healers = 0
   }
 }
-local healers = {}
-local num_healers = 0
 SLASH_KIKIBOSSES1 = "/kikibosses"
 SlashCmdList["KIKIBOSSES"] = function(msg)
   local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
@@ -79,8 +85,8 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
     else
       boss_mode = "loatheb"
       ClearTable(boss_data["Loatheb"]["healers"])
-      ParseHealers(args, healers)
-      boss_data["Loatheb"]["num_healers"] = GetArLength(healers)
+      ParseHealers(args, boss_data["Loatheb"]["healers"])
+      boss_data["Loatheb"]["num_healers"] = GetArLength(boss_data["Loatheb"]["healers"])
       print("Kikibosses: Loatheb activated.")
     end
   end
@@ -92,7 +98,9 @@ end
 local idx_healer = 1
 local loatheb_healing_spells = {
   PRIEST = "Greater Heal",
-  DRUID = "Healing Touch"
+  DRUID = "Healing Touch",
+  SHAMAN = "Healing Wave",
+  PALADIN = "Holy Light"
 }
 local player_name = UnitName("player")
 local parser_loatheb = CreateFrame("Frame")
@@ -137,7 +145,6 @@ combatlog_patterns[8] = {string=MakeGfindReady(HEALEDOTHEROTHER), order={1, 2, 3
 -- add timer for debuff (heal hits + 60s)
 parser_loatheb:SetScript("OnEvent", function()
   if boss_mode=="loatheb" then
-    print(player_name..arg1)
     local pars = {}
 
     for _,combatlog_pattern in ipairs(combatlog_patterns) do
@@ -163,7 +170,7 @@ parser_loatheb:SetScript("OnEvent", function()
           value = 0
         end
 
-        if source == healers[idx_healer] then
+        if source == boss_data["Loatheb"]["healers"][idx_healer] then
           local healer_id = GetUnitID(unitIDs_cache, unitIDs, source)
           local _, healer_class = UnitClass(healer_id)
           if loatheb_healing_spells[healer_class] == spell then
@@ -174,22 +181,23 @@ parser_loatheb:SetScript("OnEvent", function()
             local can_heal = false
             local loops = 0
             local next_healer = ""
+            local next_healer_id = ""
             while not can_heal do
-              idx_healer = math.mod(idx_healer, num_healers)+1 -- idx_healer = 1,2,3,4,5, num_healers = 5 -> idx_healer = 2,3,4,5,1
-              next_healer = healers[idx_healer]
-              local next_healer_id = GetUnitID(unitIDs_cache, unitIDs, next_healer)
-              local next_healer_debuff = UnitDebuff(next_healer_id, "Corrupted Mind")
+              idx_healer = math.mod(idx_healer, boss_data["Loatheb"]["num_healers"])+1 -- idx_healer = 1,2,3,4,5, num_healers = 5 -> idx_healer = 2,3,4,5,1
+              next_healer = boss_data["Loatheb"]["healers"][idx_healer]
+              next_healer_id = GetUnitID(unitIDs_cache, unitIDs, next_healer)
+              local next_healer_debuff = HasDebuff(next_healer_id, "Corrupted Mind")
               local next_healer_dead = UnitIsDeadOrGhost(next_healer_id)
               can_heal = (not next_healer_debuff) and (not next_healer_dead)
               loops = loops + 1
-              if loops > num_healers then
+              if loops > boss_data["Loatheb"]["num_healers"] then
                 break
               end
             end
-            if loops > num_healers then
+            if loops > boss_data["Loatheb"]["num_healers"] then
               rw_text = rw_text.." -> NO HEALERS AVAILABLE, BIG POOP!"
             else
-              local _, next_class = UnitClass(idx_healer)
+              local _, next_class = UnitClass(next_healer_id)
               local next_spell = loatheb_healing_spells[next_class]
               rw_text = rw_text.." -> "..next_healer.." ("..next_spell..")"
             end
