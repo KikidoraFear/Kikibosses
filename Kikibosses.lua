@@ -17,9 +17,13 @@ local function GetArLength(arr) -- get array length
 end
 
 local function HasDebuff(unit_id, debuff)
+  print("Checking debuff")
   for i=1,40 do
-    local debuff_active = UnitDebuff(unit_id, i)
-    if debuff_active == debuff then
+    local name,_ = UnitDebuff(unit_id, i)
+    if not name then
+      break
+    end
+    if name == debuff then
       return true
     end
   end
@@ -63,34 +67,18 @@ local function EOHeal(unitIDs_cache, unitIDs, value, target)
 end
 
 
---------------------
--- Slash Commands --
---------------------
+----------
+-- Init --
+----------
 local boss_mode = ""
 local boss_data = {
   Loatheb = {
     healers = {},
-    num_healers = 0
+    num_healers = 0,
+    idx_healer = 1
   }
 }
-SLASH_KIKIBOSSES1 = "/kikibosses"
-SlashCmdList["KIKIBOSSES"] = function(msg)
-  local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
-  if (msg == "" or msg == nil) then
-    print("/kikibosses loatheb Kikidora#Slewdem#...")
-  elseif cmd == "loatheb" then
-    if boss_mode == "loatheb" then
-      boss_mode = ""
-      print("Kikibosses: Loatheb deactivated.")
-    else
-      boss_mode = "loatheb"
-      ClearTable(boss_data["Loatheb"]["healers"])
-      ParseHealers(args, boss_data["Loatheb"]["healers"])
-      boss_data["Loatheb"]["num_healers"] = GetArLength(boss_data["Loatheb"]["healers"])
-      print("Kikibosses: Loatheb activated.")
-    end
-  end
-end
+
 
 ------------------------------
 -- Loatheb Healing Rotation --
@@ -186,7 +174,7 @@ parser_loatheb:SetScript("OnEvent", function()
               idx_healer = math.mod(idx_healer, boss_data["Loatheb"]["num_healers"])+1 -- idx_healer = 1,2,3,4,5, num_healers = 5 -> idx_healer = 2,3,4,5,1
               next_healer = boss_data["Loatheb"]["healers"][idx_healer]
               next_healer_id = GetUnitID(unitIDs_cache, unitIDs, next_healer)
-              local next_healer_debuff = HasDebuff(next_healer_id, "Corrupted Mind")
+              local next_healer_debuff = HasDebuff(next_healer_id, "Interface\\Icons\\Spell_Shadow_CurseOfTounges") -- only works with icon link, idk
               local next_healer_dead = UnitIsDeadOrGhost(next_healer_id)
               can_heal = (not next_healer_debuff) and (not next_healer_dead)
               loops = loops + 1
@@ -205,7 +193,32 @@ parser_loatheb:SetScript("OnEvent", function()
             SendChatMessage(rw_text, "RAID_WARNING")
           end
         end
+        return
       end
     end
   end
 end)
+
+--------------------
+-- Slash Commands --
+--------------------
+
+SLASH_KIKIBOSSES1 = "/kikibosses"
+SlashCmdList["KIKIBOSSES"] = function(msg)
+  local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
+  if (msg == "" or msg == nil) then
+    print("/kikibosses loatheb Kikidora#Slewdem#...")
+  elseif cmd == "loatheb" then
+    if boss_mode == "loatheb" then
+      boss_mode = ""
+      print("Kikibosses: Loatheb deactivated.")
+    else
+      boss_mode = "loatheb"
+      ClearTable(boss_data["Loatheb"]["healers"])
+      ParseHealers(args, boss_data["Loatheb"]["healers"])
+      boss_data["Loatheb"]["num_healers"] = GetArLength(boss_data["Loatheb"]["healers"])
+      idx_healer = 1
+      print("Kikibosses: Loatheb activated.")
+    end
+  end
+end
