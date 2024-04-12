@@ -16,26 +16,15 @@ local function GetArLength(arr) -- get array length
   end
 end
 
-local function HasDebuff(unit_id, debuff)
-  for i=1,16 do
-    local icon_link = UnitDebuff(unit_id, i)
-    if not icon_link then
-      break
-    end
-    if icon_link == debuff then
-      return true
-    end
-  end
-  return false
-end
-
 local function ParseHealers(args, healers) -- SR data
   args = args.."#" -- add # so last argument will be matched as well
   local pattern = "(%w+)#"
   local idx = 1
   local rw_text = "Healer rotation: "
   for healer in string.gfind(args, pattern) do
-    healers[idx] = healer
+    healers[idx] = {}
+    healers[idx]["name"] = healer
+    healers[idx]["t_last"] = 0
     idx = idx+1
     rw_text = rw_text..healer.." -> "
   end
@@ -65,13 +54,30 @@ local function EOHeal(unitIDs_cache, unitIDs, value, target)
   return eheal, oheal
 end
 
-local function InTable(val, tbl)
-  for _, value in pairs(tbl) do
-    if value == val then
-        return true
+local function InTable(val, tbl, key)
+  for idx, field in pairs(tbl) do
+    if field[key] == val then
+        return idx
     end
   end
-  return false
+  return nil
+end
+
+local function GetMin(tbl)
+  -- healers[idx]["name"] = healer
+  -- healers[idx]["t_last"] = 0.0
+  local min = nil
+  local idx_min = 1
+  for idx,_ in pairs(tbl) do
+    if not min then
+      min = tbl[idx]["t_last"]
+    end
+    if tbl[idx]["t_last"] < min then
+      min = tbl[idx]["t_last"]
+      idx_min = idx
+    end
+  end
+  return tbl[idx_min]
 end
 
 
@@ -82,6 +88,8 @@ local boss_mode = ""
 local boss_data = {
   Loatheb = {
     healers = {},
+    num_healers = 0,
+    idx_healer = 1
   }
 }
 
@@ -89,6 +97,7 @@ local boss_data = {
 ------------------------------
 -- Loatheb Healing Rotation --
 ------------------------------
+local idx_healer = 1
 local loatheb_healing_spells = {
   PRIEST = "Greater Heal",
   DRUID = "Healing Touch",
@@ -163,33 +172,36 @@ parser_loatheb:SetScript("OnEvent", function()
           value = 0
         end
 
-        if InTable(source, boss_data["Loatheb"]["healers"]) then -- source == boss_data["Loatheb"]["healers"][idx_healer] then
+        local idx_healer_new = InTable(source, boss_data["Loatheb"]["healers"], "name") -- source == boss_data["Loatheb"]["healers"][idx_healer]["name"] then
+        if idx_healer_new then
           local healer_id = GetUnitID(unitIDs_cache, unitIDs, source)
           local _, healer_class = UnitClass(healer_id)
           if loatheb_healing_spells[healer_class] == spell then
+            idx_healer = idx_healer_new -- in case wrong healer healed, continue as if the wrong healer was supposed to heal
+            boss_data["Loatheb"]["healers"][idx_healer]["t_last"] = GetTime()
             local eheal, oheal = EOHeal(unitIDs_cache, unitIDs, value, target)
             local rw_text = source.." used "..spell.." to heal "..target.." for "..eheal.." (+"..oheal..")"
+
+            -- if source has Debuff or is dead UnitIsDeadOrGhost UnitDebuff -> skip
+            local can_heal = false
+            local loops = 0
             local next_healer = ""
             local next_healer_id = ""
-            for _, healer in ipairs(boss_data["Loatheb"]["healers"]) do -- always start at 1 in the list and search first healer that can heal (so you can prioritise strong healers)
-              healer_id = GetUnitID(unitIDs_cache, unitIDs, healer)
-              local healer_debuff = HasDebuff(next_healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
-              -- local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Holy_AshesToAshes") -- only works with icon link, idk
-              if healer_debuff then
-                print("Skipping "..healer.." (has debuff)")
-              end
-              local healer_dead = UnitIsDeadOrGhost(healer_id)
-              if healer_dead then
-                print("Skipping "..healer.." (is dead)")
-              end
-              if (not healer_debuff) and (not healer_dead) then
-                next_healer = healer
-                next_healer_id = healer_id
+            while not can_heal do
+              idx_healer = math.mod(idx_healer, boss_data["Loatheb"]["num_healers"])+1 -- idx_healer = 1,2,3,4,5, num_healers = 5 -> idx_healer = 2,3,4,5,1
+              next_healer = boss_data["Loatheb"]["healers"][idx_healer]["name"]
+              next_healer_id = GetUnitID(unitIDs_cache, unitIDs, next_healer)
+              local t_since_last = (GetTime() - boss_data["Loatheb"]["healers"][idx_healer]["t_last"])
+              local next_healer_dead = UnitIsDeadOrGhost(next_healer_id)
+              can_heal = (t_since_last >= 60) and (not next_healer_dead)
+              loops = loops + 1
+              if loops >= boss_data["Loatheb"]["num_healers"] then
                 break
               end
             end
-            if next_healer == "" then
-              rw_text = rw_text.." -> no healers available (heal as soon as you can)"
+            if loops >= boss_data["Loatheb"]["num_healers"] then
+              local next_healer_queued = GetMin(boss_data["Loatheb"]["healers"])
+              rw_text = rw_text.." -> next healer available in "..math.floor(60-(GetTime()-next_healer_queued["t_last"])).."s ("..next_healer_queued["name"]..")"
             else
               local _, next_class = UnitClass(next_healer_id)
               local next_spell = loatheb_healing_spells[next_class]
@@ -223,6 +235,7 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
       ClearTable(boss_data["Loatheb"]["healers"])
       ParseHealers(args, boss_data["Loatheb"]["healers"])
       boss_data["Loatheb"]["num_healers"] = GetArLength(boss_data["Loatheb"]["healers"])
+      idx_healer = 1
       print("Kikibosses: Loatheb activated.")
     end
   end
