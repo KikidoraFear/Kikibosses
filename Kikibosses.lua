@@ -173,7 +173,7 @@ parser_loatheb:SetScript("OnEvent", function()
             local next_healer_id = ""
             for _, healer in ipairs(boss_data["Loatheb"]["healers"]) do -- always start at 1 in the list and search first healer that can heal (so you can prioritise strong healers)
               healer_id = GetUnitID(unitIDs_cache, unitIDs, healer)
-              local healer_debuff = HasDebuff(next_healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
+              local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
               -- local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Holy_AshesToAshes") -- only works with icon link, idk
               if healer_debuff then
                 print("Skipping "..healer.." (has debuff)")
