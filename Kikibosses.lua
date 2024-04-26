@@ -139,11 +139,11 @@ combatlog_patterns[8] = {string=MakeGfindReady(HEALEDOTHEROTHER), order={1, 2, 3
 -- combatlog_patterns[12] = {string=MakeGfindReady(PERIODICAURAHEALOTHEROTHER), order={3, 4, 1, 2, nil}, kind="heal"} -- %s gains %d health from %s's %s.
 
 debuff_detector_loatheb:SetScript("OnUpdate", function()
-  if (boss_mode=="loatheb") and (debuff_detector_timer>0) and (GetTime() > debuff_detector_timer + 1) then -- check debuff 200ms after heal has been cast (there's a bit of a delay for it to get applied)
+  if (boss_mode=="loatheb") and (debuff_detector_timer>0) and (GetTime() > debuff_detector_timer + 0.2) then -- check debuff 200ms after heal has been cast (there's a bit of a delay for it to get applied)
     for idx, healer in ipairs(boss_data["Loatheb"]["healers"]) do -- always start at 1 in the list and search first healer that can heal (so you can prioritise strong healers)
       local healer_id = GetUnitID(unitIDs_cache, unitIDs, healer)
-      -- local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
-      local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Holy_AshesToAshes") -- priest shield debuff for testing
+      local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
+      -- local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Holy_AshesToAshes") -- priest shield debuff for testing
       local healer_dead = UnitIsDeadOrGhost(healer_id)
 
       if (not healer_debuff) and (not healer_dead) then
