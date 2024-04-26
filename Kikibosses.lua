@@ -82,6 +82,7 @@ local boss_mode = ""
 local boss_data = {
   Loatheb = {
     healers = {},
+    num_healers = 0
   }
 }
 
@@ -97,6 +98,9 @@ local loatheb_healing_spells = {
 }
 local player_name = UnitName("player")
 local parser_loatheb = CreateFrame("Frame")
+local debuff_detector_loatheb = CreateFrame("Frame")
+local debuff_detector_timer = -1
+local rw_text = ""
 local unitIDs = {"player"} -- unitID player
 for i=2,5 do unitIDs[i] = "party"..i-1 end -- unitIDs party
 for i=6,45 do unitIDs[i] = "raid"..i-5 end -- unitIDs raid
@@ -134,12 +138,30 @@ combatlog_patterns[7] = {string=MakeGfindReady(HEALEDCRITOTHEROTHER), order={1, 
 combatlog_patterns[8] = {string=MakeGfindReady(HEALEDOTHEROTHER), order={1, 2, 3, 4, nil}, kind="heal"} -- %s's %s heals %s for %d.
 -- combatlog_patterns[12] = {string=MakeGfindReady(PERIODICAURAHEALOTHEROTHER), order={3, 4, 1, 2, nil}, kind="heal"} -- %s gains %d health from %s's %s.
 
+debuff_detector_loatheb:SetScript("OnUpdate", function()
+  if (boss_mode=="loatheb") and (debuff_detector_timer>0) and (GetTime() > debuff_detector_timer + 1) then -- check debuff 200ms after heal has been cast (there's a bit of a delay for it to get applied)
+    for idx, healer in ipairs(boss_data["Loatheb"]["healers"]) do -- always start at 1 in the list and search first healer that can heal (so you can prioritise strong healers)
+      local healer_id = GetUnitID(unitIDs_cache, unitIDs, healer)
+      -- local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
+      local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Holy_AshesToAshes") -- priest shield debuff for testing
+      local healer_dead = UnitIsDeadOrGhost(healer_id)
 
--- add timer for debuff (heal hits + 60s)
+      if (not healer_debuff) and (not healer_dead) then
+        rw_text = rw_text.." -> "..healer.." next"
+        break
+      elseif idx == boss_data["Loatheb"]["num_healers"] then
+        rw_text = rw_text.." -> no healer available (heal as soon as you can)"
+      end
+    end
+    SendChatMessage(rw_text, "RAID_WARNING")
+    debuff_detector_timer = -1
+  end
+end)
+
+
 parser_loatheb:SetScript("OnEvent", function()
   if boss_mode=="loatheb" then
     local pars = {}
-
     for _,combatlog_pattern in ipairs(combatlog_patterns) do
       for par_1, par_2, par_3, par_4, par_5 in string.gfind(arg1, combatlog_pattern.string) do
         pars = {par_1, par_2, par_3, par_4, par_5}
@@ -168,35 +190,8 @@ parser_loatheb:SetScript("OnEvent", function()
           local _, healer_class = UnitClass(healer_id)
           if loatheb_healing_spells[healer_class] == spell then
             local eheal, oheal = EOHeal(unitIDs_cache, unitIDs, value, target)
-            local rw_text = source.." used "..spell.." to heal "..target.." for "..eheal.." (+"..oheal..")"
-            local next_healer = ""
-            local next_healer_id = ""
-            for _, healer in ipairs(boss_data["Loatheb"]["healers"]) do -- always start at 1 in the list and search first healer that can heal (so you can prioritise strong healers)
-              healer_id = GetUnitID(unitIDs_cache, unitIDs, healer)
-              local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Shadow_AuraOfDarkness") -- only works with icon link, idk
-              -- local healer_debuff = HasDebuff(healer_id, "Interface\\Icons\\Spell_Holy_AshesToAshes") -- only works with icon link, idk
-              if healer_debuff then
-                print("Skipping "..healer.." (has debuff)")
-              end
-              local healer_dead = UnitIsDeadOrGhost(healer_id)
-              if healer_dead then
-                print("Skipping "..healer.." (is dead)")
-              end
-              if (not healer_debuff) and (not healer_dead) then
-                next_healer = healer
-                next_healer_id = healer_id
-                break
-              end
-            end
-            if next_healer == "" then
-              rw_text = rw_text.." -> no healers available (heal as soon as you can)"
-            else
-              local _, next_class = UnitClass(next_healer_id)
-              local next_spell = loatheb_healing_spells[next_class]
-              rw_text = rw_text.." -> "..next_healer.." next ("..next_spell..")"
-            end
-
-            SendChatMessage(rw_text, "RAID_WARNING")
+            rw_text = source.." used "..spell.." to heal "..target.." for "..eheal.." (+"..oheal..")"
+            debuff_detector_timer = GetTime()
           end
         end
         return
