@@ -74,6 +74,15 @@ local function InTable(val, tbl)
   return false
 end
 
+local function StringInTable(val, tbl)
+  for _, value in pairs(tbl) do
+    if string.find(val, value) then
+        return true
+    end
+  end
+  return false
+end
+
 
 ----------
 -- Init --
@@ -83,8 +92,44 @@ local boss_data = {
   Loatheb = {
     healers = {},
     num_healers = 0
-  }
+  },
+  Fourhm = {}
 }
+
+
+---------------------------------
+-- 4 Horsemen Healing Rotation --
+---------------------------------
+local parser_4hm = CreateFrame("Frame")
+local debuff_detector_4hm = CreateFrame("Frame")
+parser_4hm:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE") -- 4hm mark event
+parser_4hm:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE") -- 4hm mark event
+parser_4hm:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE") -- 4hm mark event
+local debuff_detector_4hm_timer_start = -1
+local mark_counter = 0
+local mark_interval = 12
+-- local mark_bosses = {"Zeliek","Mograine","Thane","Blaumeux"}
+
+debuff_detector_4hm:SetScript("OnUpdate", function()
+  if (boss_mode=="4hm") and (debuff_detector_4hm_timer_start>0) and (GetTime() > debuff_detector_4hm_timer_start + mark_interval*mark_counter) then
+    if (math.mod(mark_counter, 3)+1)==boss_data["Fourhm"] then
+      print("Mark: "..(mark_counter+1).." MOVE!")
+      PlaySoundFile("Interface\\AddOns\\Kikibosses\\SFX\\horsemen_move.mp3")
+    else
+      print("Mark: "..(mark_counter+1).." STAY!")
+    end
+    mark_counter = mark_counter + 1
+  end
+end)
+
+parser_4hm:SetScript("OnEvent", function()
+  if (boss_mode == "4hm") and (debuff_detector_4hm_timer_start<0) then
+    if string.find(arg1, " afflicted by Mark of ") then
+      debuff_detector_4hm_timer_start = GetTime()
+      mark_counter = 0
+    end
+  end
+end)
 
 
 ------------------------------
@@ -209,6 +254,7 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
   if (msg == "" or msg == nil) then
     print("/kikibosses loatheb Kikidora#Slewdem#...")
+    print("/kikibosses 4hm 1,2,3")
   elseif cmd == "loatheb" then
     if boss_mode == "loatheb" then
       boss_mode = ""
@@ -219,6 +265,30 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
       ParseHealers(args, boss_data["Loatheb"]["healers"])
       boss_data["Loatheb"]["num_healers"] = GetArLength(boss_data["Loatheb"]["healers"])
       print("Kikibosses: Loatheb activated.")
+    end
+  elseif cmd == "4hm" then
+    if boss_mode == "4hm" then
+      boss_mode = ""
+      print("Kikibosses: 4 Horsemen deactivated.")
+    else
+      boss_mode = "4hm"
+      boss_data["Fourhm"] = tonumber(args)
+      debuff_detector_4hm_timer_start = -1
+      mark_interval = 12
+      print("Kikibosses: 4 Horsemen activated.")
+      mark_counter = 0
+    end
+  elseif cmd == "4hmtest" then
+    if boss_mode == "4hm" then
+      boss_mode = ""
+      print("Kikibosses: 4 Horsemen deactivated.")
+    else
+      boss_mode = "4hm"
+      boss_data["Fourhm"] = tonumber(args)
+      print("Kikibosses: 4 Horsemen activated. Test enabled!")
+      mark_interval = 2
+      debuff_detector_4hm_timer_start = GetTime()
+      mark_counter = 0
     end
   end
 end
