@@ -20,7 +20,7 @@ tells you if and why healer has been skipped
  _/kikibosses 4hm 2_  
  _/kikibosses 4hm 3_  
  
-depending on your mark (rotate on first mark -> 1,...)  
+depending on your mark (rotate on first mark 1,2,3)  
 
 you can test it by using  
 _/kikibosses 4hmtest 1_  
