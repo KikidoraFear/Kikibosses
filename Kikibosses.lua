@@ -29,6 +29,17 @@ local function HasDebuff(unit_id, debuff)
   return false
 end
 
+local function EOHeal(unitIDs_cache, unitIDs, value, target)
+  local unitID = GetUnitID(unitIDs_cache, unitIDs, target)
+  local eheal = 0
+  local oheal = 0
+  if unitID then
+    eheal = math.min(UnitHealthMax(unitID) - UnitHealth(unitID), value)
+    oheal = value-eheal
+  end
+  return eheal, oheal
+end
+
 local function ParseHealers(args, healers) -- SR data
   args = args.."#" -- add # so last argument will be matched as well
   local pattern = "(%w+)#"
@@ -199,7 +210,10 @@ loatheb.event_frame:SetScript("OnEvent", function()
           value = 0
         end
 
-        if InTable(source, loatheb.healers) and InTable(spell, loatheb.spells) then
+        if InTable(source, loatheb.healers) and InTable(spell, loatheb.spells)  then
+          local eheal, oheal = EOHeal(unitIDs_cache, unitIDs, value, target)
+          local ra_text = source.." used "..spell.." to heal "..target.." for "..eheal.." (+"..oheal..")"
+          SendChatMessage(ra_text, "RAID")
           loatheb.rw_text = source.." healed"
           loatheb.debuff_timer = GetTime()
         end
