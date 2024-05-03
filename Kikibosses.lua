@@ -54,17 +54,6 @@ local function GetUnitID(unitIDs_cache, unitIDs, name)
   end
 end
 
-local function EOHeal(unitIDs_cache, unitIDs, value, target)
-  local unitID = GetUnitID(unitIDs_cache, unitIDs, target)
-  local eheal = 0
-  local oheal = 0
-  if unitID then
-    eheal = math.min(UnitHealthMax(unitID) - UnitHealth(unitID), value)
-    oheal = value-eheal
-  end
-  return eheal, oheal
-end
-
 local function InTable(val, tbl)
   for _, value in pairs(tbl) do
     if value == val then
@@ -211,8 +200,7 @@ loatheb.event_frame:SetScript("OnEvent", function()
         end
 
         if InTable(source, loatheb.healers) and InTable(spell, loatheb.spells) then
-          local eheal, oheal = EOHeal(unitIDs_cache, unitIDs, value, target)
-          loatheb.rw_text = source.." used "..spell.." to heal "..target.." for "..eheal.." (+"..oheal..")"
+          loatheb.rw_text = source.." healed"
           loatheb.debuff_timer = GetTime()
         end
         return
