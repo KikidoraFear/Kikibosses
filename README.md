@@ -19,7 +19,7 @@ tells you if and why healer has been skipped
  _/kikibosses horsemen T1_  
 where T is the boss you start on:  
 T = Thane  
-B = Blaumauex  
+B = Blaumeux  
 Z = Zeliek  
 M = Mograine  
 and 1 the number of your mark 1, 2 or 3  
