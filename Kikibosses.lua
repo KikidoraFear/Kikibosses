@@ -98,14 +98,23 @@ horsemen.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAG
 horsemen.ti_mark_start = -1
 horsemen.ct_marks = 0
 horsemen.ti_mark_interval = 12
+horsemen.bosses = {"THANE", "BLAUMEUX", "ZELIEK", "MOGRAINE"}
+horsemen.bosses_idx = {
+  T=1,
+  B=2,
+  Z=3,
+  M=4
+}
 
 horsemen.update_frame:SetScript("OnUpdate", function()
   if (boss_mode=="horsemen") and (horsemen.ti_mark_start>0) and (GetTime() > horsemen.ti_mark_start + horsemen.ti_mark_interval*horsemen.ct_marks) then
     if (math.mod(horsemen.ct_marks, 3)+1)==horsemen.mark_player then
-      print("Mark: "..(horsemen.ct_marks+1).." MOVE!")
-      PlaySoundFile("Interface\\AddOns\\Kikibosses\\SFX\\horsemen_move.mp3")
+      horsemen.boss_idx = math.mod(horsemen.boss_idx, 4)+1
+      print("Mark: "..(horsemen.ct_marks+1).." MOVE TO "..horsemen.bosses[horsemen.boss_idx].."!")
+      -- PlaySoundFile("Interface\\AddOns\\Kikibosses\\SFX\\horsemen_move.mp3")
+      PlaySoundFile("Interface\\AddOns\\Kikibosses\\SFX\\horsemen_move"..horsemen.boss_idx..".mp3")
     else
-      print("Mark: "..(horsemen.ct_marks+1).." STAY!")
+      print("Mark: "..(horsemen.ct_marks+1).." STAY AT "..horsemen.bosses[horsemen.boss_idx].."!")
     end
     horsemen.ct_marks = horsemen.ct_marks + 1
   end
@@ -232,7 +241,7 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
   if (msg == "" or msg == nil) then
     print("/kikibosses loatheb Kikidora#Slewdem#...")
-    print("/kikibosses horsemen 1,2,3")
+    print("/kikibosses Z2")
   elseif cmd == "loatheb" then
     if boss_mode == "loatheb" then
       boss_mode = ""
@@ -250,7 +259,8 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
       print("Kikibosses: Horsemen deactivated.")
     else
       boss_mode = "horsemen"
-      horsemen.mark_player = tonumber(args)
+      horsemen.boss_idx = horsemen.bosses_idx[string.sub(args,1,1)] -- translates T=1, B=2, Z=3, M=4
+      horsemen.mark_player = tonumber(string.sub(args,2,2))
       horsemen.ti_mark_start = -1
       horsemen.ti_mark_interval = 12
       horsemen.ct_marks = 0
@@ -262,7 +272,8 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
       print("Kikibosses: Horsemen deactivated.")
     else
       boss_mode = "horsemen"
-      horsemen.mark_player = tonumber(args)
+      horsemen.boss_idx = horsemen.bosses_idx[string.sub(args,1,1)]
+      horsemen.mark_player = tonumber(string.sub(args,2,2))
       horsemen.ti_mark_start = GetTime()
       horsemen.ti_mark_interval = 2
       horsemen.ct_marks = 0
