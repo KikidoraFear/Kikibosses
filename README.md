@@ -16,13 +16,18 @@ tells you if and why healer has been skipped
 
  # 4 Horsemen
  activate by typing  
- _/kikibosses 4hm 1_  
- _/kikibosses 4hm 2_  
- _/kikibosses 4hm 3_  
- 
-depending on your mark (rotate on first mark 1,2,3)  
+ _/kikibosses horsemen T1_  
+where T is the boss you start on:  
+T = Thane  
+B = Blaumauex  
+Z = Zeliek  
+M = Mograine  
+and 1 the number of your mark 1, 2 or 3  
 
 you can test it by using  
-_/kikibosses 4hmtest 1_  
-_/kikibosses 4hmtest 2_  
-_/kikibosses 4hmtest 3_  
+_/kikibosses horsementest T1_  
+where it'll trigger immediately and display each message in 2 second intervals.  
+When using  _/kikibosses horsemen T1_, it will trigger when the first mark is detected  
+and display messages in 12 second intervals.  
+
+deactivate by using the command again. Activate it before engaging.
