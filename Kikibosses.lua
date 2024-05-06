@@ -74,6 +74,18 @@ local function InTable(val, tbl)
   return false
 end
 
+local function RegisterEvents(frame, events)
+  for _, event in pairs(events) do
+    frame:RegisterEvent(event)
+  end
+end
+
+local function UnregisterEvents(frame, events)
+  for _, event in pairs(events) do
+    frame:UnregisterEvent(event)
+  end
+end
+
 ----------
 -- Init --
 ----------
@@ -93,9 +105,11 @@ local kelthuzad = {}
 ---------------------------------
 horsemen.update_frame = CreateFrame("Frame")
 horsemen.event_frame = CreateFrame("Frame")
-horsemen.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE") -- horsemen mark event
-horsemen.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE") -- horsemen mark event
-horsemen.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE") -- horsemen mark event
+horsemen.events = {
+  "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE",
+  "CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE",
+  "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE"
+}
 horsemen.ti_mark_start = -1
 horsemen.ct_marks = 0
 horsemen.ti_mark_interval = 12
@@ -144,23 +158,27 @@ end)
 -- Display deaths of priests
 
 kelthuzad.event_frame = CreateFrame("Frame")
-kelthuzad.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE")
-kelthuzad.event_frame:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER")
-kelthuzad.event_frame:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLY_DEATH")
-kelthuzad.event_frame:RegisterEvent("PLAYER_DEAD")
+kelthuzad.events = {
+  "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE",
+  "CHAT_MSG_SPELL_AURA_GONE_OTHER",
+  "CHAT_MSG_COMBAT_FRIENDLY_DEATH",
+  "PLAYER_DEAD"
+}
 kelthuzad.shackled = 0
 
 kelthuzad.event_frame:SetScript("OnEvent", function()
   if boss_mode == "kelthuzad" then
     if event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" then
       if arg1 == "Guardian of Icecrown is afflicted by Shackle Undead." then
+      -- if arg1 == "Diseased Flayer is afflicted by Shackle Undead." then
         kelthuzad.shackled = kelthuzad.shackled + 1
-        SendChatMessage(kelthuzad.shackled.."/3 Guardians shackled"..kelthuzad.shackled, "RAID_WARNING")
+        SendChatMessage(kelthuzad.shackled.."/3 Guardians shackled", "RAID_WARNING")
       end
     elseif event == "CHAT_MSG_SPELL_AURA_GONE_OTHER" then
       if arg1 == "Shackle Undead fades from Guardian of Icecrown." then
+      -- if arg1 == "Shackle Undead fades from Diseased Flayer." then
         kelthuzad.shackled = kelthuzad.shackled - 1
-        SendChatMessage(kelthuzad.shackled.."/3 Guardians shackled"..kelthuzad.shackled, "RAID_WARNING")
+        SendChatMessage(kelthuzad.shackled.."/3 Guardians shackled", "RAID_WARNING")
       end
     elseif event == "CHAT_MSG_COMBAT_FRIENDLY_DEATH" then
       for player_name in string.gfind(arg1, "(.+) dies.") do
@@ -187,14 +205,16 @@ loatheb.update_frame = CreateFrame("Frame")
 loatheb.debuff_timer = -1
 loatheb.rw_text = ""
 -- DETECT HEALS
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_BUFFS")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_PARTY_BUFF")
-loatheb.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS")
+loatheb.events = {
+  "CHAT_MSG_SPELL_SELF_BUFF",
+  "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS",
+  "CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF",
+  "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS",
+  "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF",
+  "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_BUFFS",
+  "CHAT_MSG_SPELL_PARTY_BUFF",
+  "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS"
+}
 
 local function MakeGfindReady(template) -- changes global string to fit gfind pattern
   template = gsub(template, "%%s", "(.+)") -- % is escape: %%s = %s raw
@@ -292,9 +312,11 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   elseif cmd == "loatheb" then
     if boss_mode == "loatheb" then
       boss_mode = ""
+      UnregisterEvents(loatheb.event_frame, loatheb.events)
       print("Kikibosses: Loatheb deactivated.")
     else
       boss_mode = "loatheb"
+      RegisterEvents(loatheb.event_frame, loatheb.events)
       ClearTable(loatheb.healers)
       ParseHealers(args, loatheb.healers)
       loatheb.num_healers = GetArLength(loatheb.healers)
@@ -303,9 +325,11 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   elseif cmd == "horsemen" then
     if boss_mode == "horsemen" then
       boss_mode = ""
+      UnregisterEvents(horsemen.event_frame, horsemen.events)
       print("Kikibosses: Horsemen deactivated.")
     else
       boss_mode = "horsemen"
+      RegisterEvents(horsemen.event_frame, horsemen.events)
       horsemen.boss_idx = horsemen.bosses_idx[string.sub(args,1,1)] -- translates T=1, B=2, Z=3, M=4
       horsemen.mark_player = tonumber(string.sub(args,2,2))
       horsemen.ti_mark_start = -1
@@ -316,9 +340,11 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   elseif cmd == "horsementest" then
     if boss_mode == "horsemen" then
       boss_mode = ""
+      UnregisterEvents(horsemen.event_frame, horsemen.events)
       print("Kikibosses: Horsemen deactivated.")
     else
       boss_mode = "horsemen"
+      RegisterEvents(horsemen.event_frame, horsemen.events)
       horsemen.boss_idx = horsemen.bosses_idx[string.sub(args,1,1)]
       horsemen.mark_player = tonumber(string.sub(args,2,2))
       horsemen.ti_mark_start = GetTime()
@@ -329,9 +355,11 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   elseif cmd == "kelthuzad" then
     if boss_mode == "kelthuzad" then
       boss_mode = ""
+      UnregisterEvents(kelthuzad.event_frame, kelthuzad.events)
       print("Kikibosses: Kelthuzad deactivated!")
     else
       boss_mode = "kelthuzad"
+      RegisterEvents(kelthuzad.event_frame, kelthuzad.events)
       kelthuzad.shackled = 0
       print("Kikibosses: Kelthuzad activated!")
     end
