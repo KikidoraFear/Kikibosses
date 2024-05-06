@@ -86,6 +86,7 @@ local unitIDs_cache = {} -- init unitIDs_cache[name] = unitID
 local boss_mode = ""
 local loatheb = {}
 local horsemen = {}
+local kelthuzad = {}
 
 ---------------------------------
 -- Horsemen Healing Rotation --
@@ -125,6 +126,52 @@ horsemen.event_frame:SetScript("OnEvent", function()
     if string.find(arg1, " afflicted by Mark of ") then
       horsemen.ti_mark_start = GetTime()
       horsemen.ct_marks = 0
+    end
+  end
+end)
+
+
+----------------------------
+-- Kel'Thuzad Bug shackle --
+----------------------------
+
+-- https://github.com/Bergador/KTP3ShackleCounter/blob/master/KTP3ShackleCounter.lua
+-- 5/5 22:08:55.497  Hollowman begins to cast Shackle Undead.
+-- 5/5 22:08:57.264  Hollowman's Shackle Undead was resisted by Guardian of Icecrown.
+-- 5/5 22:08:57.407  Hollowman begins to cast Shackle Undead.
+-- 5/5 22:08:58.891  Guardian of Icecrown is afflicted by Shackle Undead.
+
+-- Display deaths of priests
+
+kelthuzad.event_frame = CreateFrame("Frame")
+kelthuzad.event_frame:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE")
+kelthuzad.event_frame:RegisterEvent("CHAT_MSG_SPELL_AURA_GONE_OTHER")
+kelthuzad.event_frame:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLY_DEATH")
+kelthuzad.event_frame:RegisterEvent("PLAYER_DEAD")
+kelthuzad.shackled = 0
+
+kelthuzad.event_frame:SetScript("OnEvent", function()
+  if boss_mode == "kelthuzad" then
+    if event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" then
+      if arg1 == "Guardian of Icecrown is afflicted by Shackle Undead." then
+        kelthuzad.shackled = kelthuzad.shackled + 1
+        SendChatMessage(kelthuzad.shackled.."/3 Guardians shackled"..kelthuzad.shackled, "RAID_WARNING")
+      end
+    elseif event == "CHAT_MSG_SPELL_AURA_GONE_OTHER" then
+      if arg1 == "Shackle Undead fades from Guardian of Icecrown." then
+        kelthuzad.shackled = kelthuzad.shackled - 1
+        SendChatMessage(kelthuzad.shackled.."/3 Guardians shackled"..kelthuzad.shackled, "RAID_WARNING")
+      end
+    elseif event == "CHAT_MSG_COMBAT_FRIENDLY_DEATH" then
+      for player_name in string.gfind(arg1, "(.+) dies.") do
+        local player_id = GetUnitID(unitIDs_cache, unitIDs, player_name)
+        local _, player_class = UnitClass(player_id)
+        if player_class == "PRIEST" then
+          SendChatMessage(player_name.." died!", "RAID_WARNING")
+        end
+      end
+    elseif event == "PLAYER_DEAD" then
+      SendChatMessage(UnitName("player").." died!", "RAID_WARNING")
     end
   end
 end)
@@ -278,6 +325,15 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
       horsemen.ti_mark_interval = 2
       horsemen.ct_marks = 0
       print("Kikibosses: Horsemen activated. Test enabled!")
+    end
+  elseif cmd == "kelthuzad" then
+    if boss_mode == "kelthuzad" then
+      boss_mode = ""
+      print("Kikibosses: Kelthuzad deactivated!")
+    else
+      boss_mode = "kelthuzad"
+      kelthuzad.shackled = 0
+      print("Kikibosses: Kelthuzad activated!")
     end
   end
 end
