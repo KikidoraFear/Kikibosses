@@ -29,17 +29,6 @@ local function HasDebuff(unit_id, debuff)
   return false
 end
 
-local function EOHeal(unitIDs_cache, unitIDs, value, target)
-  local unitID = GetUnitID(unitIDs_cache, unitIDs, target)
-  local eheal = 0
-  local oheal = 0
-  if unitID then
-    eheal = math.min(UnitHealthMax(unitID) - UnitHealth(unitID), value)
-    oheal = value-eheal
-  end
-  return eheal, oheal
-end
-
 local function ParseHealers(args, healers) -- SR data
   args = args.."#" -- add # so last argument will be matched as well
   local pattern = "(%w+)#"
@@ -63,6 +52,17 @@ local function GetUnitID(unitIDs_cache, unitIDs, name)
       return unitID
     end
   end
+end
+
+local function EOHeal(unitIDs_cache, unitIDs, value, target)
+  local unitID = GetUnitID(unitIDs_cache, unitIDs, target)
+  local eheal = 0
+  local oheal = 0
+  if unitID then
+    eheal = math.min(UnitHealthMax(unitID) - UnitHealth(unitID), value)
+    oheal = value-eheal
+  end
+  return eheal, oheal
 end
 
 local function InTable(val, tbl)
@@ -148,14 +148,6 @@ end)
 ----------------------------
 -- Kel'Thuzad Bug shackle --
 ----------------------------
-
--- https://github.com/Bergador/KTP3ShackleCounter/blob/master/KTP3ShackleCounter.lua
--- 5/5 22:08:55.497  Hollowman begins to cast Shackle Undead.
--- 5/5 22:08:57.264  Hollowman's Shackle Undead was resisted by Guardian of Icecrown.
--- 5/5 22:08:57.407  Hollowman begins to cast Shackle Undead.
--- 5/5 22:08:58.891  Guardian of Icecrown is afflicted by Shackle Undead.
-
--- Display deaths of priests
 
 kelthuzad.event_frame = CreateFrame("Frame")
 kelthuzad.events = {
