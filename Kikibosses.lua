@@ -300,7 +300,7 @@ SlashCmdList["KIKIBOSSES"] = function(msg)
   local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
   if (msg == "" or msg == nil) then
     print("/kikibosses loatheb Kikidora#Slewdem#...")
-    print("/kikibosses Z2")
+    print("/kikibosses horsemen Z2")
   elseif cmd == "loatheb" then
     if boss_mode == "loatheb" then
       boss_mode = ""
