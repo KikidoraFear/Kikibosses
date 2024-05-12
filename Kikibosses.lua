@@ -175,9 +175,11 @@ kelthuzad.event_frame:SetScript("OnEvent", function()
     elseif event == "CHAT_MSG_COMBAT_FRIENDLY_DEATH" then
       for player_name in string.gfind(arg1, "(.+) dies.") do
         local player_id = GetUnitID(unitIDs_cache, unitIDs, player_name)
-        local _, player_class = UnitClass(player_id)
-        if player_class == "PRIEST" then
-          SendChatMessage(player_name.." died!", "RAID_WARNING")
+        if player_id then
+          local _, player_class = UnitClass(player_id)
+          if player_class == "PRIEST" then
+            SendChatMessage(player_name.." died!", "RAID_WARNING")
+          end
         end
       end
     elseif event == "PLAYER_DEAD" then
